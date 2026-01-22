@@ -1,22 +1,22 @@
 # 🚀 Guia de Deploy - Rotator Grupos WhatsApp
 
-## 📋 Estratégia Recomendada: Docker Swarm + Traefik
+## 📋 Arquitetura: Docker Swarm + Traefik
 
-Este serviço é **perfeito para Docker Swarm** porque:
-- ✅ Simples e estável
-- ✅ Integra bem com Traefik (já configurado)
-- ✅ Usa secrets para segurança
-- ✅ Healthcheck automático
-- ✅ Fácil de manter e atualizar
+**Estratégia:** Docker Swarm é a escolha correta para este serviço porque:
+- ✅ Simples, estável e confiável
+- ✅ Integração nativa com Traefik
+- ✅ Secrets seguros do Swarm
+- ✅ Healthcheck e rollback automáticos
+- ✅ Fácil manutenção via Portainer
 
 ## 🔧 Pré-requisitos
 
-- Docker Swarm ativo
-- Traefik rodando na rede `traefik-public`
-- Portainer (opcional, mas recomendado)
-- DNS apontando para o servidor (ex: `rotator.descontinbom.com.br`)
+- ✅ Docker Swarm ativo
+- ✅ Traefik rodando na rede `traefik-public`
+- ✅ Portainer instalado
+- ✅ DNS `rotator.descontinbom.com.br` apontando para a VPS
 
-## 📦 Passo 1: Build da Imagem
+## 📦 Passo 1: Preparar o Servidor
 
 **No servidor (manager node):**
 
@@ -25,17 +25,25 @@ Este serviço é **perfeito para Docker Swarm** porque:
 git clone https://github.com/vandersonaxe-creator/rotator-whatsapp.git
 cd rotator-whatsapp
 
-# Build da imagem
-docker build -t rotator-grupos:latest .
-
-# (Opcional) Tag para registry privado
-# docker tag rotator-grupos:latest seu-registry/rotator-grupos:latest
-# docker push seu-registry/rotator-grupos:latest
+# Dê permissão aos scripts (opcional)
+chmod +x scripts/*.sh
 ```
 
 ## 🔐 Passo 2: Criar Secrets no Docker Swarm
 
-**No servidor (manager node):**
+**⚠️ CRÍTICO:** Secrets devem ser criados ANTES do deploy.
+
+### Opção A: Via Script (Recomendado)
+
+```bash
+# Edite o script com seus valores reais
+nano scripts/create-secrets.sh
+
+# Execute
+./scripts/create-secrets.sh
+```
+
+### Opção B: Manual
 
 ```bash
 # Criar secrets
@@ -44,96 +52,152 @@ echo "https://evolution.hubplay.pro" | docker secret create evolution_base_url -
 echo "sua-api-key-aqui" | docker secret create evolution_apikey -
 echo "seu-token-interno-seguro" | docker secret create internal_token -
 
-# Verificar secrets criados
+# Verificar
 docker secret ls
 ```
 
-**⚠️ IMPORTANTE:**
-- Secrets são **imutáveis** (não podem ser editados)
-- Para atualizar, delete e recrie: `docker secret rm <nome>` → `docker secret create <nome> -`
+**📌 IMPORTANTE:**
+- Secrets são **imutáveis** - para atualizar: `docker secret rm <nome>` → recriar
 - Secrets são montados em `/run/secrets/<nome>` dentro do container
+- O código lê automaticamente via `_FILE` suffix
 
-## 🚀 Passo 3: Deploy via Portainer (Recomendado)
+## 🏗️ Passo 3: Build da Imagem
 
-### Opção A: Via Portainer UI
+```bash
+# Build da imagem
+docker build -t rotator-grupos:latest .
+
+# (Opcional) Verificar imagem
+docker images | grep rotator-grupos
+```
+
+## 🚀 Passo 4: Deploy via Portainer
+
+### Método Recomendado: Portainer UI
 
 1. **Acesse Portainer** → **Stacks** → **Add Stack**
 
-2. **Nome da Stack:** `rotator-grupos`
+2. **Nome:** `rotator-grupos`
 
-3. **Web editor:** Cole o conteúdo de `docker-compose.swarm.yml`
+3. **Build method:** `Repository`
 
-4. **Deploy the stack**
+4. **Repository URL:** `https://github.com/vandersonaxe-creator/rotator-whatsapp`
 
-### Opção B: Via CLI (Alternativa)
+5. **Repository reference:** `main` (ou `refs/heads/main`)
+
+6. **Compose path:** `docker-compose.swarm.yml`
+
+7. **Auto-update:** ✅ Habilitado (opcional)
+
+8. **Deploy the stack**
+
+### Método Alternativo: CLI
 
 ```bash
+# Deploy direto
 docker stack deploy -c docker-compose.swarm.yml rotator-grupos
+
+# Ou use o script
+./scripts/deploy.sh
 ```
 
-## ✅ Passo 4: Verificar Deploy
+## ✅ Passo 5: Verificar Deploy
+
+### Verificar Status
 
 ```bash
-# Ver status do serviço
+# Status do serviço
 docker service ls | grep rotator
 
-# Ver logs
-docker service logs -f rotator-grupos_rotator-grupos
-
-# Ver detalhes
-docker service ps rotator-grupos_rotator-grupos
-
-# Verificar healthcheck
-curl http://localhost:3000/health
+# Deve mostrar: 1/1 replicas
 ```
 
-## 🌐 Passo 5: Configurar Traefik (Automático)
+### Verificar Logs
 
-O `docker-compose.swarm.yml` já inclui labels do Traefik:
+```bash
+# Logs em tempo real
+docker service logs -f rotator-grupos_rotator-grupos
 
-- **Host:** `rotator.descontinbom.com.br`
-- **Entrypoint:** `websecure` (HTTPS)
-- **Certificado:** Let's Encrypt automático
-- **Porta interna:** 3000
+# Últimas 50 linhas
+docker service logs --tail 50 rotator-grupos_rotator-grupos
+```
 
-**Ajuste o host no arquivo se necessário:**
+### Verificar Tasks
 
+```bash
+# Ver tasks do serviço
+docker service ps rotator-grupos_rotator-grupos
+
+# Se estiver "Rejected", ver detalhes:
+docker service ps --no-trunc rotator-grupos_rotator-grupos
+```
+
+### Testar Healthcheck
+
+```bash
+# Via Traefik (HTTPS)
+curl https://rotator.descontinbom.com.br/health
+
+# Direto no container (se necessário)
+docker exec -it $(docker ps -q --filter "name=rotator") curl http://localhost:3000/health
+```
+
+## 🌐 Passo 6: Configurar Traefik (Automático)
+
+O `docker-compose.swarm.yml` já inclui todas as labels do Traefik:
+
+- ✅ **Host:** `rotator.descontinbom.com.br`
+- ✅ **Entrypoint:** `websecure` (HTTPS)
+- ✅ **Certificado:** Let's Encrypt automático
+- ✅ **Porta:** 3000 (interna)
+
+**Se precisar mudar o domínio:**
+
+Edite a label no `docker-compose.swarm.yml`:
 ```yaml
 - "traefik.http.routers.rotator-grupos.rule=Host(`seu-dominio.com.br`)"
 ```
 
 ## 🔄 Atualização do Serviço
 
-### Via Portainer:
+### Via Portainer (Recomendado)
+
 1. **Stacks** → `rotator-grupos` → **Editor**
-2. Ajuste o código/config
+2. Ajuste o `docker-compose.swarm.yml`
 3. **Update the stack**
 
-### Via CLI:
+### Via CLI
+
 ```bash
 # Rebuild da imagem
 docker build -t rotator-grupos:latest .
 
-# Atualizar stack
+# Atualizar serviço
 docker service update --image rotator-grupos:latest rotator-grupos_rotator-grupos
+
+# Ou atualizar stack completa
+docker stack deploy -c docker-compose.swarm.yml rotator-grupos
 ```
 
 ## 🐛 Troubleshooting
 
-### Task em estado "Rejected"
+### ❌ Task em estado "Rejected"
 
-**Causa comum:** Secrets não encontrados
+**Causa mais comum:** Secrets não encontrados
 
 **Solução:**
 ```bash
-# Verificar secrets
+# 1. Verificar secrets existem
 docker secret ls
 
-# Ver logs detalhados
+# 2. Ver erro detalhado
 docker service ps --no-trunc rotator-grupos_rotator-grupos
+
+# 3. Criar secrets faltantes
+./scripts/create-secrets.sh
 ```
 
-### Container não inicia
+### ❌ Container não inicia / Crash loop
 
 **Verificar logs:**
 ```bash
@@ -141,106 +205,148 @@ docker service logs --tail 100 rotator-grupos_rotator-grupos
 ```
 
 **Problemas comuns:**
-- DATABASE_URL inválido
-- Evolution API key incorreta
-- Porta 3000 já em uso
+- `DATABASE_URL` inválido → Verificar connection string
+- `EVOLUTION_APIKEY` incorreta → Verificar API key
+- Erro de conexão PostgreSQL → Verificar SSL e credenciais
+- Porta 3000 em uso → Não deve acontecer (Traefik roteia)
 
-### Healthcheck falhando
+### ❌ Healthcheck falhando
 
 **Testar manualmente:**
 ```bash
 # Dentro do container
-docker exec -it <container-id> curl http://localhost:3000/health
+docker exec -it $(docker ps -q --filter "name=rotator") curl -f http://localhost:3000/health
 
-# De fora
-curl http://<server-ip>:3000/health
+# De fora (via Traefik)
+curl -f https://rotator.descontinbom.com.br/health
 ```
+
+**Se falhar:**
+- Verificar se app está rodando: `docker service logs rotator-grupos_rotator-grupos`
+- Verificar se porta 3000 está aberta internamente
+- Verificar se `/health` endpoint existe
+
+### ❌ Traefik não roteia
+
+**Verificar:**
+```bash
+# Ver labels do serviço
+docker service inspect rotator-grupos_rotator-grupos | grep -A 20 Labels
+
+# Verificar rede
+docker network inspect traefik-public | grep rotator
+```
+
+**Solução:**
+- Verificar se rede `traefik-public` existe: `docker network ls | grep traefik`
+- Verificar labels do Traefik no `docker-compose.swarm.yml`
+- Verificar se Traefik está rodando: `docker service ls | grep traefik`
 
 ## 📊 Monitoramento
 
 ### Portainer
-- **Stacks** → Ver status, logs, recursos
+- **Stacks** → Ver status, logs, recursos, métricas
 
-### Logs em tempo real
+### Logs em Tempo Real
 ```bash
 docker service logs -f rotator-grupos_rotator-grupos
 ```
 
-### Métricas
+### Métricas de Recursos
 ```bash
-docker stats $(docker ps -q --filter "name=rotator-grupos")
+docker stats $(docker ps -q --filter "name=rotator")
 ```
 
 ## 🔒 Segurança
 
 ✅ **Já implementado:**
-- Secrets do Docker Swarm
-- HTTPS via Traefik
+- Secrets do Docker Swarm (não expostos em env vars)
+- HTTPS via Traefik (Let's Encrypt)
 - Token interno para endpoints protegidos
 - Healthcheck isolado
+- Usuário não-root no container
 
-⚠️ **Recomendações adicionais:**
-- Use firewall (UFW/iptables)
-- Limite acesso ao Portainer
-- Rotacione tokens periodicamente
-- Monitore logs de acesso
+⚠️ **Recomendações:**
+- Firewall (UFW/iptables) bloqueando portas desnecessárias
+- Acesso ao Portainer apenas via VPN/SSH tunnel
+- Rotação periódica de tokens
+- Monitoramento de logs de acesso
 
 ## 📝 Variáveis de Ambiente
 
-| Variável | Tipo | Descrição |
-|----------|------|-----------|
-| `PORT` | Env | Porta do servidor (padrão: 3000) |
-| `DATABASE_URL` | Secret | Connection string PostgreSQL |
-| `EVOLUTION_BASE_URL` | Secret | URL base da Evolution API |
-| `EVOLUTION_APIKEY` | Secret | API key da Evolution |
-| `INTERNAL_TOKEN` | Secret | Token para endpoints internos |
+| Variável | Tipo | Como é lida | Descrição |
+|----------|------|-------------|-----------|
+| `PORT` | Env | Direto | Porta do servidor (padrão: 3000) |
+| `DATABASE_URL` | Secret | Via `DATABASE_URL_FILE` | Connection string PostgreSQL |
+| `EVOLUTION_BASE_URL` | Secret | Via `EVOLUTION_BASE_URL_FILE` | URL base da Evolution API |
+| `EVOLUTION_APIKEY` | Secret | Via `EVOLUTION_APIKEY_FILE` | API key da Evolution |
+| `INTERNAL_TOKEN` | Secret | Via `INTERNAL_TOKEN_FILE` | Token para endpoints internos |
 
 ## 🎯 Endpoints
 
 ### Público
-- `GET https://rotator.descontinbom.com.br/join/:slug` → Redirect para grupo
+```
+GET https://rotator.descontinbom.com.br/join/:slug
+→ Redirect 302 para grupo WhatsApp ativo
+```
 
-### Interno (protegido)
-- `POST https://rotator.descontinbom.com.br/internal/join-pools/:slug/rotate`
-- Header: `x-internal-token: <INTERNAL_TOKEN>`
+### Interno (Protegido)
+```
+POST https://rotator.descontinbom.com.br/internal/join-pools/:slug/rotate
+Headers:
+  x-internal-token: <INTERNAL_TOKEN>
+→ Executa rotação do pool
+```
 
 ### Health
-- `GET https://rotator.descontinbom.com.br/health` → Status do serviço
+```
+GET https://rotator.descontinbom.com.br/health
+→ { "status": "ok" }
+```
 
 ## 🔄 Integração com n8n
 
 Configure o n8n para chamar o endpoint interno a cada 1 minuto:
 
-```javascript
-// HTTP Request node
-Method: POST
-URL: https://rotator.descontinbom.com.br/internal/join-pools/descontinho/rotate
-Headers:
-  x-internal-token: <seu-token>
-```
+**HTTP Request Node:**
+- **Method:** `POST`
+- **URL:** `https://rotator.descontinbom.com.br/internal/join-pools/descontinho/rotate`
+- **Headers:**
+  - `x-internal-token`: `<seu-token>`
 
-**Cron:** `*/1 * * * *` (a cada 1 minuto)
+**Cron Trigger:**
+- **Expression:** `*/1 * * * *` (a cada 1 minuto)
 
-## 📚 Arquivos Importantes
+## 📚 Arquivos do Projeto
 
-- `docker-compose.swarm.yml` → Configuração para Swarm
-- `Dockerfile` → Build da imagem
-- `src/config/env.ts` → Carregador de variáveis (suporta secrets)
+| Arquivo | Descrição |
+|---------|-----------|
+| `docker-compose.swarm.yml` | ✅ Configuração para Swarm (PRODUÇÃO) |
+| `docker-compose.yml` | Desenvolvimento local |
+| `Dockerfile` | Build da imagem |
+| `src/config/env.ts` | Carregador de env/secrets |
+| `scripts/create-secrets.sh` | Script para criar secrets |
+| `scripts/deploy.sh` | Script de deploy completo |
 
 ## ✅ Checklist de Deploy
 
-- [ ] Imagem buildada
-- [ ] Secrets criados no Swarm
+- [ ] Servidor preparado (Git, Docker Swarm ativo)
+- [ ] Secrets criados no Swarm (`docker secret ls`)
+- [ ] Imagem buildada (`docker images | grep rotator`)
 - [ ] Stack deployada via Portainer
 - [ ] Serviço rodando (1/1 replicas)
-- [ ] Healthcheck passando
-- [ ] Traefik roteando corretamente
-- [ ] HTTPS funcionando
-- [ ] Endpoint `/health` respondendo
-- [ ] Endpoint público `/join/:slug` testado
-- [ ] Endpoint interno `/internal/.../rotate` testado
+- [ ] Healthcheck passando (`/health` retorna 200)
+- [ ] Traefik roteando (HTTPS funcionando)
+- [ ] Endpoint público testado (`/join/:slug`)
+- [ ] Endpoint interno testado (`/internal/.../rotate`)
 - [ ] n8n configurado para chamar endpoint interno
+
+## 🎉 Pronto!
+
+Seu serviço está rodando em produção e pronto para uso!
+
+**Acesse:** https://rotator.descontinbom.com.br/health
 
 ---
 
-**Pronto!** Seu serviço está rodando em produção. 🎉
+**Problemas?** Consulte a seção [Troubleshooting](#-troubleshooting) acima.

@@ -1,6 +1,6 @@
 # Rotator Grupos WhatsApp
 
-Sistema de rotação automática de grupos WhatsApp usando Fastify + TypeScript + PostgreSQL.
+Sistema de rotação automática de grupos WhatsApp usando Fastify + TypeScript + PostgreSQL + Evolution API.
 
 ## 🎯 Objetivo
 
@@ -10,7 +10,7 @@ Automatizar a criação e rotação de grupos WhatsApp quando atingem um limite 
 
 - **Node.js** + **TypeScript**
 - **Fastify** (web framework)
-- **PostgreSQL** (via `@fastify/postgres`)
+- **PostgreSQL** (Supabase)
 - **Axios** (HTTP client)
 - **Evolution API** (WhatsApp gateway)
 
@@ -19,9 +19,9 @@ Automatizar a criação e rotação de grupos WhatsApp quando atingem um limite 
 - Node.js 18+
 - PostgreSQL (Supabase)
 - Evolution API configurada
-- Variáveis de ambiente configuradas
+- Docker + Docker Swarm (para produção)
 
-## 🚀 Instalação
+## 🚀 Instalação Local
 
 ```bash
 # Instalar dependências
@@ -31,6 +31,10 @@ npm install
 cp .env.example .env
 
 # Editar .env com suas credenciais
+nano .env
+
+# Executar em desenvolvimento
+npm run dev
 ```
 
 ## ⚙️ Configuração
@@ -39,7 +43,7 @@ Edite o arquivo `.env` com as seguintes variáveis:
 
 ```env
 PORT=3000
-DATABASE_URL=postgresql://user:password@host:port/database
+DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
 EVOLUTION_BASE_URL=https://evolution.hubplay.pro
 EVOLUTION_APIKEY=sua-api-key
 INTERNAL_TOKEN=seu-token-interno-seguro
@@ -66,7 +70,7 @@ psql -d seu_banco -f migrations/seed.sql
 npm run dev
 ```
 
-### Produção
+### Produção (Build)
 
 ```bash
 # Build
@@ -75,6 +79,16 @@ npm run build
 # Start
 npm start
 ```
+
+### Docker (Desenvolvimento)
+
+```bash
+docker-compose up
+```
+
+### Docker Swarm (Produção)
+
+Veja o guia completo em **[DEPLOY.md](./DEPLOY.md)**
 
 ## 📡 Endpoints
 
@@ -145,84 +159,27 @@ curl http://localhost:3000/health
      - Atualiza `current_group_id`
      - Incrementa `next_sequence`
 
-## ✅ Checklist de Validação
+## 🐳 Deploy em Produção
 
-### 1. Testar redirecionamento 302
+**Para deploy completo em Docker Swarm, consulte: [DEPLOY.md](./DEPLOY.md)**
 
-```bash
-# Deve retornar 302 com Cache-Control: no-store
-curl -I http://localhost:3000/join/descontinho
-```
+### Resumo Rápido
 
-### 2. Testar criação de grupo
+1. **Criar secrets no Swarm:**
+   ```bash
+   ./scripts/create-secrets.sh
+   ```
 
-```bash
-# Primeira chamada deve criar grupo #01
-curl -X POST http://localhost:3000/internal/join-pools/descontinho/rotate \
-  -H "x-internal-token: seu-token"
-```
+2. **Deploy via Portainer:**
+   - Stacks → Add Stack
+   - Repository: `https://github.com/vandersonaxe-creator/rotator-whatsapp`
+   - Compose path: `docker-compose.swarm.yml`
 
-### 3. Testar rotação ao atingir threshold
-
-```bash
-# Simular threshold atingido (ajustar member_count manualmente no banco)
-# Chamar rotate novamente deve criar grupo #02
-curl -X POST http://localhost:3000/internal/join-pools/descontinho/rotate \
-  -H "x-internal-token: seu-token"
-```
-
-## 🐳 Deploy no Docker Swarm
-
-### docker-compose.yml
-
-```yaml
-version: '3.8'
-
-services:
-  rotator-grupos:
-    image: rotator-grupos:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - PORT=3000
-      - DATABASE_URL=${DATABASE_URL}
-      - EVOLUTION_BASE_URL=${EVOLUTION_BASE_URL}
-      - EVOLUTION_APIKEY=${EVOLUTION_APIKEY}
-      - INTERNAL_TOKEN=${INTERNAL_TOKEN}
-    secrets:
-      - database_url
-      - evolution_apikey
-      - internal_token
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-```
-
-### Secrets
-
-```bash
-# Criar secrets no Docker Swarm
-echo "postgresql://..." | docker secret create database_url -
-echo "sua-api-key" | docker secret create evolution_apikey -
-echo "seu-token" | docker secret create internal_token -
-```
-
-### Deploy
-
-```bash
-# Build da imagem
-docker build -t rotator-grupos:latest .
-
-# Deploy no Swarm
-docker stack deploy -c docker-compose.yml rotator
-```
+3. **Verificar:**
+   ```bash
+   docker service ls | grep rotator
+   curl https://rotator.descontinbom.com.br/health
+   ```
 
 ## 📝 Notas Importantes
 
@@ -231,13 +188,23 @@ docker stack deploy -c docker-compose.yml rotator
 - O endpoint público nunca lança exceções, sempre retorna HTML amigável em caso de erro
 - O Evolution API client tem timeout de 8s e retry simples (1 tentativa)
 - O endpoint interno é protegido por token via header `x-internal-token`
+- O código suporta Docker Swarm secrets via `_FILE` suffix
 
 ## 🔒 Segurança
 
-- Nunca commitar arquivo `.env`
-- Usar tokens seguros para `INTERNAL_TOKEN`
-- Configurar CORS se necessário
-- Validar inputs nas rotas
+- ✅ Secrets do Docker Swarm (não expostos em env vars)
+- ✅ HTTPS via Traefik (Let's Encrypt)
+- ✅ Token interno para endpoints protegidos
+- ✅ Healthcheck isolado
+- ✅ Usuário não-root no container
+
+## 📚 Arquivos Importantes
+
+- `docker-compose.swarm.yml` → Configuração para Swarm (PRODUÇÃO)
+- `docker-compose.yml` → Desenvolvimento local
+- `Dockerfile` → Build da imagem
+- `src/config/env.ts` → Carregador de env/secrets
+- `DEPLOY.md` → Guia completo de deploy
 
 ## 📄 Licença
 
