@@ -3,36 +3,44 @@ version: '3.8'
 services:
   rotator-grupos:
     image: rotator-grupos:latest
+
     environment:
       - PORT=3000
-      # Docker Swarm secrets: use _FILE suffix
+      # Docker Swarm secrets (via _FILE)
       - DATABASE_URL_FILE=/run/secrets/database_url
       - EVOLUTION_BASE_URL_FILE=/run/secrets/evolution_base_url
       - EVOLUTION_APIKEY_FILE=/run/secrets/evolution_apikey
       - INTERNAL_TOKEN_FILE=/run/secrets/internal_token
+
     secrets:
       - database_url
       - evolution_base_url
       - evolution_apikey
       - internal_token
+
     deploy:
       replicas: 1
+
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
+
       update_config:
         parallelism: 1
         delay: 10s
         failure_action: rollback
         order: start-first
+
       rollback_config:
         parallelism: 1
         delay: 5s
+
       placement:
         constraints:
           - node.role == manager
+
       resources:
         limits:
           cpus: '1'
@@ -40,23 +48,27 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
+
       labels:
         - "traefik.enable=true"
-        - "traefik.docker.network=eplay1987"
+        - "traefik.docker.network=traefik-public"
         - "traefik.http.routers.rotator-grupos.rule=Host(`rotator.descontinbom.com.br`)"
         - "traefik.http.routers.rotator-grupos.entrypoints=websecure"
         - "traefik.http.routers.rotator-grupos.tls.certresolver=letsencrypt"
         - "traefik.http.services.rotator-grupos.loadbalancer.server.port=3000"
         - "traefik.http.routers.rotator-grupos.middlewares=rotator-grupos-headers"
         - "traefik.http.middlewares.rotator-grupos-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
     networks:
       - traefik-public
+
 
 secrets:
   database_url:
@@ -67,6 +79,7 @@ secrets:
     external: true
   internal_token:
     external: true
+
 
 networks:
   traefik-public:
