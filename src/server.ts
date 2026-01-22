@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { buildApp } from './app';
+import { config } from './config/env';
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = config.port;
 
 async function start() {
   try {

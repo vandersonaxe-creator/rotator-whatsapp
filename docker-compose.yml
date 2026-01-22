@@ -1,5 +1,8 @@
 version: '3.8'
 
+# Docker Compose para desenvolvimento local
+# Para produção (Swarm), use docker-compose.swarm.yml
+
 services:
   rotator-grupos:
     build:
@@ -19,7 +22,7 @@ services:
       - .env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3

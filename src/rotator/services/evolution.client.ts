@@ -11,12 +11,9 @@ export class EvolutionClient {
   private apikey: string;
 
   constructor() {
-    this.baseUrl = process.env.EVOLUTION_BASE_URL || '';
-    this.apikey = process.env.EVOLUTION_APIKEY || '';
-
-    if (!this.baseUrl || !this.apikey) {
-      throw new Error('EVOLUTION_BASE_URL and EVOLUTION_APIKEY are required');
-    }
+    const { config } = require('../../config/env');
+    this.baseUrl = config.evolutionBaseUrl;
+    this.apikey = config.evolutionApikey;
 
     this.client = axios.create({
       baseURL: this.baseUrl,

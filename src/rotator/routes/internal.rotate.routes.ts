@@ -3,11 +3,8 @@ import { JoinPoolRotatorService } from '../services/joinPoolRotator.service';
 import { EvolutionClient } from '../services/evolution.client';
 
 const internalRotateRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  const INTERNAL_TOKEN = process.env.INTERNAL_TOKEN;
-
-  if (!INTERNAL_TOKEN) {
-    throw new Error('INTERNAL_TOKEN environment variable is required');
-  }
+  const { config } = await import('../../config/env');
+  const INTERNAL_TOKEN = config.internalToken;
 
   // EvolutionClient conforme implementação atual (sem args)
   const evolutionClient = new EvolutionClient();

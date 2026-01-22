@@ -9,11 +9,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   // Register PostgreSQL plugin directly (no wrapper to avoid scope issues)
-  const databaseUrl = process.env.DATABASE_URL;
-  
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is required');
-  }
+  const { config } = await import('./config/env');
+  const databaseUrl = config.databaseUrl;
 
   // Parse connection string and ensure SSL config is applied
   // Remove sslmode from connection string if present to avoid conflicts
