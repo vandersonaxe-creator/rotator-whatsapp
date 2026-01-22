@@ -1,32 +1,40 @@
-version: '3.8'
+version: "3.8"
 
 services:
   rotator-grupos:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: rotator-grupos:latest
-    container_name: rotator-grupos
-    ports:
-      - "${PORT:-3000}:3000"
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run build && npm run start"
+    volumes:
+      - ./:/app
+
     environment:
-      - PORT=${PORT:-3000}
-      - DATABASE_URL=${DATABASE_URL}
-      - EVOLUTION_BASE_URL=${EVOLUTION_BASE_URL}
-      - EVOLUTION_APIKEY=${EVOLUTION_APIKEY}
-      - INTERNAL_TOKEN=${INTERNAL_TOKEN}
-    env_file:
-      - .env
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      EVOLUTION_BASE_URL: ${EVOLUTION_BASE_URL}
+      EVOLUTION_APIKEY: ${EVOLUTION_APIKEY}
+      EVOLUTION_INSTANCE_NAME: ${EVOLUTION_INSTANCE_NAME}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+
     networks:
-      - rotator-network
+      - traefik-public
+
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+
+        - traefik.http.routers.rotator.rule=Host(`rotator.descontinbom.com.br`)
+        - traefik.http.routers.rotator.entrypoints=websecure
+        - traefik.http.routers.rotator.tls.certresolver=letsencrypt
+
+        - traefik.http.services.rotator.loadbalancer.server.port=3000
 
 networks:
-  rotator-network:
-    driver: bridge
+  traefik-public:
+    external: true
