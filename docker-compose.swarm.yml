@@ -42,7 +42,7 @@ services:
           memory: 256M
       labels:
         - "traefik.enable=true"
-        - "traefik.docker.network=traefik-public"
+        - "traefik.docker.network=eplay1987"
         - "traefik.http.routers.rotator-grupos.rule=Host(`rotator.descontinbom.com.br`)"
         - "traefik.http.routers.rotator-grupos.entrypoints=websecure"
         - "traefik.http.routers.rotator-grupos.tls.certresolver=letsencrypt"
