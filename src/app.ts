@@ -2,6 +2,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 import fastifyPostgres from '@fastify/postgres';
 import joinRoutes from './rotator/routes/join.routes';
 import internalRotateRoutes from './rotator/routes/internal.rotate.routes';
+import webhookRoutes from './rotator/routes/webhook.routes';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -26,6 +27,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Register routes (same scope as postgres)
   await app.register(joinRoutes);
   await app.register(internalRotateRoutes);
+  await app.register(webhookRoutes);
 
   return app;
 }

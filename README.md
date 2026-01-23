@@ -92,11 +92,56 @@ Veja o guia completo em **[DEPLOY.md](./DEPLOY.md)**
 
 ## 📡 Endpoints
 
-### 1. Endpoint Público - Join
+### 1. Endpoint Público - Join (Novo)
+
+**GET** `/join?campaign=nome-da-campanha`
+
+Retorna JSON com link do WhatsApp para enviar "ENTRAR".
+
+**Exemplo:**
+```bash
+curl http://localhost:3000/join?campaign=descontinho
+```
+
+**Resposta de sucesso:**
+```json
+{
+  "status": "success",
+  "campaign": "descontinho",
+  "campanha": "Descontinho Bom",
+  "whatsapp": {
+    "link": "https://wa.me/?text=ENTRAR",
+    "text": "ENTRAR",
+    "instruction": "Envie a palavra ENTRAR no WhatsApp para ser adicionado ao grupo"
+  }
+}
+```
+
+**Respostas de erro:**
+- `400` - Parâmetro "campaign" obrigatório
+- `404` - Campanha não encontrada
+
+### 2. Webhook Evolution API
+
+**POST** `/webhook/evolution`
+
+Recebe eventos do Evolution API e processa mensagens "ENTRAR".
+
+**Fluxo:**
+1. Usuário envia "ENTRAR" no WhatsApp
+2. Evolution API envia webhook para este endpoint
+3. Sistema identifica o número do usuário
+4. Adiciona usuário ao grupo ativo da campanha
+5. Envia confirmação via WhatsApp
+
+**Configuração no Evolution API:**
+Configure o webhook para apontar para: `https://rotator.descontinbom.com.br/webhook/evolution`
+
+### 3. Endpoint Público - Join (Legado)
 
 **GET** `/join/:slug`
 
-Redireciona para o grupo WhatsApp ativo.
+Redireciona para o grupo WhatsApp ativo (compatibilidade).
 
 **Exemplo:**
 ```bash

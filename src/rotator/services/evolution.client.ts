@@ -155,4 +155,80 @@ export class EvolutionClient {
       }
     });
   }
+
+  /**
+   * Adiciona um participante a um grupo
+   * @param instance Nome da instância
+   * @param groupJid JID do grupo (formato: 120363423328612694@g.us)
+   * @param participantPhone Número do telefone (formato: 5521999999999)
+   */
+  async addParticipant(
+    instance: string,
+    groupJid: string,
+    participantPhone: string
+  ): Promise<{ success: boolean }> {
+    return this.requestWithRetry(async () => {
+      try {
+        const response = await this.client.post(
+          `/group/addParticipants/${instance}`,
+          {
+            groupJid,
+            participants: [participantPhone],
+          }
+        );
+        return { success: true };
+      } catch (error: any) {
+        if (error.response) {
+          console.error('[Evolution API] addParticipant error:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            url: error.config?.url,
+            method: error.config?.method,
+            dataSent: error.config?.data,
+          });
+        }
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Envia uma mensagem de texto
+   * @param instance Nome da instância
+   * @param to JID do destinatário (número ou grupo)
+   * @param text Texto da mensagem
+   */
+  async sendTextMessage(
+    instance: string,
+    to: string,
+    text: string
+  ): Promise<{ success: boolean }> {
+    return this.requestWithRetry(async () => {
+      try {
+        const response = await this.client.post(
+          `/message/sendText/${instance}`,
+          {
+            number: to,
+            textMessage: {
+              text,
+            },
+          }
+        );
+        return { success: true };
+      } catch (error: any) {
+        if (error.response) {
+          console.error('[Evolution API] sendTextMessage error:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            url: error.config?.url,
+            method: error.config?.method,
+            dataSent: error.config?.data,
+          });
+        }
+        throw error;
+      }
+    });
+  }
 }
