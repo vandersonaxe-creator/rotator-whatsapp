@@ -8,6 +8,7 @@ export interface WaGroupPool {
   description: string | null;
   current_group_id: number | null;
   next_sequence: number;
+  bootstrap_participants: string[];
   created_at: Date;
   updated_at: Date;
 }

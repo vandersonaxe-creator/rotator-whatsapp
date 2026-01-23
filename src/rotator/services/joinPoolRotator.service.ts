@@ -36,10 +36,19 @@ export class JoinPoolRotatorService {
         const sequence = groupPool.next_sequence;
         const groupTitle = `${groupPool.title} #${String(sequence).padStart(2, '0')}`;
 
-        // 3️⃣ Criar grupo na Evolution
+        // 3️⃣ Obter bootstrap_participants do pool (mínimo 2 participantes)
+        const bootstrapParticipants = groupPool.bootstrap_participants || [];
+        
+        // Validar que temos pelo menos 2 participantes
+        if (bootstrapParticipants.length < 2) {
+          throw new Error(`Pool ${slug} precisa de pelo menos 2 bootstrap_participants configurados`);
+        }
+
+        // 4️⃣ Criar grupo na Evolution com bootstrap_participants
         const evolutionGroup = await this.evolutionClient.createGroup(
           groupPool.instance_name,
-          groupTitle
+          groupTitle,
+          bootstrapParticipants
         );
 
         // A Evolution retorna 'id' (não 'gid')

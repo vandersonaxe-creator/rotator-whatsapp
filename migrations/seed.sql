@@ -8,6 +8,7 @@ INSERT INTO rotator.wa_group_pools (
   description,
   current_group_id,
   next_sequence,
+  bootstrap_participants,
   created_at,
   updated_at
 ) VALUES (
@@ -23,6 +24,7 @@ INSERT INTO rotator.wa_group_pools (
 ✅ Aproveite os descontos!',
   NULL,
   1,
+  ARRAY['5521979197180', '5522992379748'],
   now(),
   now()
 );

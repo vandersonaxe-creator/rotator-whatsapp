@@ -41,18 +41,21 @@ export class EvolutionClient {
 
   async createGroup(
     instance: string,
-    subject: string
+    subject: string,
+    participants: string[] = []
   ): Promise<EvolutionCreateGroupResponse> {
     return this.requestWithRetry(async () => {
       try {
+        // Usar participantes fornecidos ou fallback para os padrões
+        const groupParticipants = participants.length >= 2 
+          ? participants 
+          : ['5522992379748', '5521980967727'];
+        
         const response = await this.client.post<EvolutionCreateGroupResponse>(
           `/group/create/${instance}`,
           {
             subject,
-            participants: [
-              '5522992379748',
-              '5521980967727',
-            ],
+            participants: groupParticipants,
           }
         );
         return response.data;
