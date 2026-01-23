@@ -24,7 +24,7 @@ INSERT INTO rotator.wa_group_pools (
 ✅ Aproveite os descontos!',
   NULL,
   1,
-  ARRAY['5521979197180', '5522992379748'],
+  ARRAY['+5521979197180', '+5522992379748'],
   now(),
   now()
 );

@@ -25,6 +25,18 @@ export class EvolutionClient {
     });
   }
 
+  private normalizeParticipant(p: string): string {
+    // Aceita E.164 com "+" ou sem; remove caracteres não numéricos.
+    // Ex: "+55 (21) 97919-7180" -> "5521979197180"
+    return (p ?? "").toString().trim().replace(/\D/g, "");
+  }
+
+  private normalizeParticipants(participants: string[]): string[] {
+    return (participants ?? [])
+      .map((p) => this.normalizeParticipant(p))
+      .filter((p) => p.length > 0);
+  }
+
   private async requestWithRetry<T>(
     fn: () => Promise<T>,
     retries = 1
@@ -46,10 +58,13 @@ export class EvolutionClient {
   ): Promise<EvolutionCreateGroupResponse> {
     return this.requestWithRetry(async () => {
       try {
-        // Usar participantes fornecidos ou fallback para os padrões
-        const groupParticipants = participants.length >= 2 
-          ? participants 
-          : ['5522992379748', '5521980967727'];
+        const groupParticipants = this.normalizeParticipants(participants);
+        if (groupParticipants.length < 2) {
+          throw new Error(
+            `EvolutionClient.createGroup requer >= 2 participants (recebido: ${groupParticipants.length}). ` +
+            `Configure bootstrap_participants no pool.`
+          );
+        }
         
         const response = await this.client.post<EvolutionCreateGroupResponse>(
           `/group/create/${instance}`,
