@@ -84,7 +84,26 @@ export class JoinPoolRotatorService {
           }
         }
 
-        // 6️⃣ Criar invite (chamada separada)
+        // 6️⃣ Aplicar announcement (só admins enviam mensagens)
+        try {
+          await this.evolutionClient.updateGroupSetting(
+            groupPool.instance_name,
+            groupJid,
+            'announcement'
+          );
+          console.log(`[Rotate] ${slug} #${String(sequence).padStart(2, '0')}: announcement aplicado`);
+        } catch (error) {
+          console.warn(`Failed to set announcement: ${error}`);
+        }
+
+        // Log de ações aplicadas
+        console.log(`[Rotate] ${slug} #${String(sequence).padStart(2, '0')}: grupo criado`, {
+          photoApplied: !!groupPool.photo_url,
+          descriptionApplied: !!groupPool.description,
+          announcement: true,
+        });
+
+        // 8️⃣ Criar invite (chamada separada)
         const inviteResponse = await this.evolutionClient.createInvite(
           groupPool.instance_name,
           groupJid
@@ -99,7 +118,7 @@ export class JoinPoolRotatorService {
           throw new Error('Failed to generate invite link');
         }
 
-        // 7️⃣ Inserir grupo no banco
+        // 9️⃣ Inserir grupo no banco
         const groupRes = await client.query(
           `
           insert into rotator.wa_groups
@@ -119,7 +138,7 @@ export class JoinPoolRotatorService {
 
         const groupId = groupRes.rows[0].id;
 
-        // 8️⃣ Atualizar pool
+        // 🔟 Atualizar pool
         await client.query(
           `
           update rotator.wa_group_pools

@@ -175,6 +175,39 @@ export class EvolutionClient {
   }
 
   /**
+   * Atualiza configuração do grupo (announcement, locked, etc)
+   * @param instance Nome da instância
+   * @param groupJid JID do grupo
+   * @param action 'announcement' | 'not_announcement' | 'locked' | 'unlocked'
+   */
+  async updateGroupSetting(
+    instance: string,
+    groupJid: string,
+    action: 'announcement' | 'not_announcement' | 'locked' | 'unlocked'
+  ): Promise<void> {
+    return this.requestWithRetry(async () => {
+      try {
+        await this.client.post(
+          `/group/updateSetting/${instance}`,
+          { action },
+          { params: { groupJid } }
+        );
+      } catch (error: any) {
+        if (error.response) {
+          console.error('[Evolution API] updateGroupSetting error:', {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            url: error.config?.url,
+            action,
+          });
+        }
+        throw error;
+      }
+    });
+  }
+
+  /**
    * Adiciona um participante a um grupo
    * @param instance Nome da instância
    * @param groupJid JID do grupo (formato: 120363423328612694@g.us)
